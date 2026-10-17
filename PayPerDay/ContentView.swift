@@ -17,10 +17,13 @@ struct ContentView: View {
         Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: startDate)
     }
 
-
     var draft: Budget? {
         guard let amount, amount > 0, rangeIsValid else { return nil }
         return Budget(name: name, amount: amount, startDate: startDate, endDate: endDate, recurring: recurring)
+    }
+
+    var totalPerDay: Double {
+        budgets.reduce(0) { $0 + $1.payToday }
     }
 
     var body: some View {
@@ -29,7 +32,7 @@ struct ContentView: View {
                 .font(.largeTitle)
 
             TextField("Name", text: $name, prompt: Text("Name of Category"))
-            TextField("Amount", value: $amount, format: .number, prompt: Text("Amount over the Interval"))
+            TextField("Amount", value: $amount, format: .number, prompt: Text("Amount Over the Interval"))
 
             Picker("Interval", selection: $preset) {
                 ForEach(IntervalPreset.allCases) { Text($0.rawValue).tag($0) }
@@ -78,10 +81,18 @@ struct ContentView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                Divider()
+                HStack {
+                    Text("Total allowance per day")
+                    Spacer()
+                    Text(totalPerDay, format: .currency(code: "USD"))
+                        .font(.title3.bold())
+                }
             }
         }
         .padding()
-        .frame(minWidth: 480, minHeight: 540)
+        .frame(minWidth: 480, minHeight: 560)
     }
 
     func addBudget() {

@@ -34,6 +34,10 @@ struct Budget: Identifiable {
     }
 
     var isFinished: Bool { !recurring && daysPaid >= lengthDays }
+    
+    var payToday: Double {
+        (daysPaid > 0 && (recurring || daysPaid <= lengthDays)) ? dailyPay : 0
+    }
 
     var intervalText: String {
         let start = startDate.formatted(date: .abbreviated, time: .omitted)
