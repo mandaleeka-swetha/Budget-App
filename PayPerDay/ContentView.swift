@@ -3,14 +3,24 @@ import SwiftUI
 struct ContentView: View {
     @State private var name = ""
     @State private var amount: Double?
-    @State private var every = 1
-    @State private var unit: TimeUnit = .years
+    @State private var preset: IntervalPreset = .year
     @State private var startDate = Date()
+    @State private var customEnd = Calendar.current.date(byAdding: .day, value: 29, to: Date()) ?? Date()
+    @State private var recurring = true
     @State private var budgets: [Budget] = []
 
+    var endDate: Date {
+        preset == .custom ? customEnd : (preset.endDate(from: startDate) ?? startDate)
+    }
+
+    var rangeIsValid: Bool {
+        Calendar.current.startOfDay(for: endDate) >= Calendar.current.startOfDay(for: startDate)
+    }
+
+
     var draft: Budget? {
-        guard let amount, amount > 0 else { return nil }
-        return Budget(name: name, amount: amount, every: every, unit: unit, startDate: startDate)
+        guard let amount, amount > 0, rangeIsValid else { return nil }
+        return Budget(name: name, amount: amount, startDate: startDate, endDate: endDate, recurring: recurring)
     }
 
     var body: some View {
@@ -19,20 +29,34 @@ struct ContentView: View {
                 .font(.largeTitle)
 
             TextField("Name", text: $name, prompt: Text("Name of Category"))
-            TextField("Amount", value: $amount, format: .number, prompt: Text("Amount over one interval"))
+            TextField("Amount", value: $amount, format: .number, prompt: Text("Amount over the Interval"))
 
-            HStack {
-                Stepper("Interval: \(every)", value: $every, in: 1...365)
-                Picker("Unit", selection: $unit) {
-                    ForEach(TimeUnit.allCases) { Text($0.rawValue).tag($0) }
+            Picker("Interval", selection: $preset) {
+                ForEach(IntervalPreset.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+
+            DatePicker("From", selection: $startDate, displayedComponents: .date)
+
+            if preset == .custom {
+                DatePicker("To", selection: $customEnd, displayedComponents: .date)
+            } else {
+                HStack {
+                    Text("To")
+                    Spacer()
+                    Text(endDate.formatted(date: .abbreviated, time: .omitted))
+                        .foregroundStyle(.secondary)
                 }
-                .labelsHidden()
             }
 
-            DatePicker("Start date", selection: $startDate, displayedComponents: .date)
+            Toggle("Repeat after it ends", isOn: $recurring)
+                .toggleStyle(.checkbox)
 
-            if let draft {
-                Text("You'll be paid \(draft.dailyPay, format: .currency(code: "USD")) per day")
+            if !rangeIsValid {
+                Text("The end date must be on or after the start date")
+                    .foregroundStyle(.red)
+            } else if let draft {
+                Text("You'll be paid \(draft.dailyPay, format: .currency(code: "USD")) per day for \(draft.lengthDays) days")
             } else {
                 Text("Enter an amount to see your daily pay")
                     .foregroundStyle(.secondary)
@@ -57,7 +81,7 @@ struct ContentView: View {
             }
         }
         .padding()
-        .frame(minWidth: 440, minHeight: 480)
+        .frame(minWidth: 480, minHeight: 540)
     }
 
     func addBudget() {
@@ -65,7 +89,6 @@ struct ContentView: View {
         budgets.append(draft)
         name = ""
         amount = nil
-        every = 1
     }
 
     func delete(_ budget: Budget) {
@@ -73,6 +96,9 @@ struct ContentView: View {
     }
 }
 
+#Preview {
+    ContentView()
+}
 #Preview {
     ContentView()
 }
